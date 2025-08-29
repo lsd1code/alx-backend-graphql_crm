@@ -12,26 +12,41 @@ from .models import (
 class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
-        fields = ('name', 'email', 'phone')
+        fields = ('id', 'name', 'email', 'phone')
+
+
+class CustomerInput(graphene.InputObjectType):
+    name = graphene.String()
+    email = graphene.String()
+    phone = graphene.String()
 
 
 class ProductType(DjangoObjectType):
     class Meta:
         model = Product
-        fields = ('name', 'price', 'stock')
+        fields = ('id', 'name', 'price', 'stock')
+
+
+class OrderType(DjangoObjectType):
+    customer = graphene.Field(CustomerType)
+    products = graphene.List(ProductType)
+
+    class Meta:
+        model = Order
+        fields = ('id', 'order_date')
 
 
 class Query(graphene.ObjectType):
     hello = graphene.String()
     all_customers = graphene.List(CustomerType)
-    all_products = graphene.List(CustomerType)
+    all_products = graphene.List(ProductType)
     get_customer = graphene.Field(CustomerType, id=graphene.Int())
     get_product = graphene.Field(ProductType, id=graphene.Int())
 
-    def resolve_get_customer(root, info, id):
+    def resolve_get_customer(root, info, id):  # type:ignore
         return Customer.objects.get(pk=id)
 
-    def resolve_get_product(root, info, id):
+    def resolve_get_product(root, info, id):  # type:ignore
         return Product.objects.get(pk=id)
 
     def resolve_all_customers(root, info):  # type:ignore
@@ -79,9 +94,48 @@ class CreateProduct(graphene.Mutation):
         return CreateProduct(product=product)  # type: ignore
 
 
+class BulkCreateCustomers(graphene.Mutation):
+    class Arguments:
+        customers = graphene.List(CustomerInput, required=True)
+
+    customers = graphene.List(lambda: CustomerType)
+
+    @classmethod
+    def mutate(cls, root, info, customers):
+        customer_instances = [
+            Customer(name=c.name, email=c.email, phone=c.phone) for c in customers
+        ]
+
+        created_customers = Customer.objects.bulk_create(customer_instances)
+
+        return BulkCreateCustomers(customers=created_customers)  # type:ignore
+
+
+class ProductInput(graphene.InputObjectType):
+    product_id = graphene.Int()
+
+
+class CreateOrder(graphene.Mutation):
+    class Arguments:
+        customer_id = graphene.ID()
+        product_ids = graphene.List(ProductInput)
+
+    order = graphene.Field(OrderType)
+
+    @classmethod
+    def mutate(cls, root, info, customer_id):
+        order = Order(customer_id=customer_id)
+        order.save()
+
+        return CreateOrder()  # type:ignore
+
+
 class Mutation(graphene.ObjectType):
     create_product = CreateProduct.Field()
     create_customer = CreateCustomer.Field()
+    bulk_create_customer = BulkCreateCustomers.Field()
+
+    create_order = CreateOrder.Field()
 
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
