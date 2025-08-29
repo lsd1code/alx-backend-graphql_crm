@@ -17,6 +17,7 @@ for customer in customers:
             customer.delete()
             count += 1
             continue
+print(f'Removed ${count} customers - ${datetime.now}')
 
 with open('/tmp/customer_cleanup_log.txt') as f:
     f.write(f'Removed ${count} customers - ${datetime.now}')
