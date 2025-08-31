@@ -39,12 +39,18 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'graphene_django',
     'rest_framework_simplejwt',
+    'django_crontab',
     'crm'
 ]
 
 GRAPHENE = {
     'SCHEMA': 'crm.schema.schema'
 }
+
+CRONJOBS = [
+    ('*/5 * * * *', 'crm.cron.log_crm_heartbeat'),
+]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
