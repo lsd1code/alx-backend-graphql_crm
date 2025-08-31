@@ -27,11 +27,25 @@ client = Client(transport=transport, fetch_schema_from_transport=True)
 
 query = gql("""
 query {
-    allCustomers {
-        name
+    allOrders {
+        order {
+            id
+        }
+        customer {
+            email
+        }
     }
 }
 """)
 
 results = client.execute(query)
 
+data = results.get('data')
+
+for order in data:
+    if order.status != 'PENDING':
+        continue
+    with open('temp/orders_reminders_log,txt', 'a') as f:
+        f.write(f'{order.id} - {order.customer.email}')
+
+print('Order reminders processed')
